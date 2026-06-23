@@ -14,17 +14,22 @@ const JWT_SECRET = 'ryoiki-super-secret-key-123!';
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Setup Railway Volume Data Path
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || __dirname;
 
 // Initialize uploads folder
-if (!fs.existsSync('uploads')) {
-    fs.mkdirSync('uploads');
+const uploadsDir = path.join(DATA_DIR, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+app.use('/uploads', express.static(uploadsDir));
+
 // Setup SQLite Database
-const db = new sqlite3.Database('./ryoiki.db', (err) => {
+const dbPath = path.join(DATA_DIR, 'ryoiki.db');
+const db = new sqlite3.Database(dbPath, (err) => {
     if (err) console.error(err.message);
-    else console.log('Connected to the SQLite database.');
+    else console.log(`Connected to the SQLite database at ${dbPath}`);
 });
 
 // Create tables
@@ -155,7 +160,7 @@ app.get('/api/profile/:uuid', (req, res) => {
 
 // 5. Upload Custom Skin
 const storage = multer.diskStorage({
-    destination: './uploads/',
+    destination: uploadsDir,
     filename: (req, file, cb) => {
         cb(null, req.user.uuid + '.png'); // Always overwrite the user's single skin
     }
